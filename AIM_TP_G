@@ -54,6 +54,8 @@ end)
 -- Tạo bảng trạng thái
 local active = false
 local highlightPart = nil
+local tracking = false  -- Biến để kiểm tra xem có đang bám theo hay không
+local trackConnection = nil  -- Kết nối để chạy chức năng theo dõi
 
 -- Tạo chức năng teleport và làm nổi bật
 function activateTPAndHighlight()
@@ -113,13 +115,38 @@ function removeHighlight()
     end
 end
 
--- Teleport đến người chơi khi bấm phím G
+-- Chức năng bám theo người chơi
+function startTracking()
+    tracking = true
+    local closestPlayer, _ = findClosestPlayer(300)
+    if closestPlayer then
+        -- Liên tục cập nhật vị trí để bám theo người chơi gần nhất
+        trackConnection = game:GetService("RunService").RenderStepped:Connect(function()
+            if tracking and closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = closestPlayer.Character.HumanoidRootPart.CFrame
+            end
+        end)
+    end
+end
+
+function stopTracking()
+    tracking = false
+    if trackConnection then
+        trackConnection:Disconnect()
+        trackConnection = nil
+    end
+end
+
+-- Teleport đến người chơi khi giữ phím H
 local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode == Enum.KeyCode.G and active then
-        local closestPlayer, closestDist = findClosestPlayer(300)
-        if closestPlayer then
-            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = closestPlayer.Character.HumanoidRootPart.CFrame
-        end
+        startTracking()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.G and tracking then
+        stopTracking()
     end
 end)
